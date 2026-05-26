@@ -22,6 +22,7 @@ class SpellFixerApp:
         self.status_text = tk.StringVar(value="Ready")
         self.ignored_patterns = self.load_gitignore()
         self.sort_option = tk.StringVar(value="alphabetical")
+        self.filter_text = tk.StringVar()
         self.selected_typo = None
         self.selected_occurrence = None
 
@@ -242,6 +243,14 @@ class SpellFixerApp:
         left_frame = ttk.Frame(left_panel)
         left_frame.pack(fill=tk.BOTH, expand=True)
 
+        # Filter entry
+        filter_frame = ttk.Frame(left_frame)
+        filter_frame.pack(fill=tk.X, padx=5, pady=5)
+        ttk.Label(filter_frame, text="Filter:").pack(side=tk.LEFT, padx=2)
+        filter_entry = ttk.Entry(filter_frame, textvariable=self.filter_text, width=20)
+        filter_entry.pack(side=tk.LEFT, padx=2, fill=tk.X, expand=True)
+        filter_entry.bind("<KeyRelease>", lambda e: self.on_filter_change())
+
         self.typo_listbox = tk.Listbox(left_frame, height=30)
         self.typo_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.typo_listbox.bind("<<ListboxSelect>>", self.on_typo_select)
@@ -300,7 +309,7 @@ class SpellFixerApp:
         self.status_label.pack(fill=tk.X)
 
     def refresh_typo_list(self):
-        """Refresh the typo list based on sort option"""
+        """Refresh the typo list based on sort option and filter"""
         self.typo_listbox.delete(0, tk.END)
 
         if self.sort_option.get() == "alphabetical":
@@ -308,9 +317,16 @@ class SpellFixerApp:
         else:  # count
             sorted_typos = sorted(self.typos.keys(), key=lambda t: len(self.typos[t]), reverse=True)
 
+        filter_str = self.filter_text.get().lower()
         for typo in sorted_typos:
+            if filter_str and filter_str not in typo.lower():
+                continue
             count = len(self.typos[typo])
             self.typo_listbox.insert(tk.END, f"{typo} ({count})")
+
+    def on_filter_change(self):
+        """Handle filter text change"""
+        self.refresh_typo_list()
 
     def on_typo_select(self, event):
         """Handle typo selection"""
@@ -324,7 +340,14 @@ class SpellFixerApp:
         else:
             sorted_typos = sorted(self.typos.keys(), key=lambda t: len(self.typos[t]), reverse=True)
 
-        self.selected_typo = sorted_typos[idx]
+        # Apply filter to get the displayed list
+        filter_str = self.filter_text.get().lower()
+        filtered_typos = [t for t in sorted_typos if not filter_str or filter_str in t.lower()]
+
+        if idx < len(filtered_typos):
+            self.selected_typo = filtered_typos[idx]
+        else:
+            return
         self.refresh_occurrence_list()
 
         # Automatically select first occurrence
