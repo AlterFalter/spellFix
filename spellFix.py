@@ -5,6 +5,7 @@ from pathlib import Path
 from collections import defaultdict
 import subprocess
 import os
+import json
 
 
 class SpellFixerApp:
@@ -12,27 +13,63 @@ class SpellFixerApp:
         self.root = root
         self.root.title("SpellFix")
         self.root.geometry("1400x800")
+        self.config_file = Path.home() / ".spellfix_config.json"
 
         self.typos = defaultdict(list)
         self.fixed_items = {}  # Track fixed/skipped items: (typo, file, line) -> status
-        self.report_path = tk.StringVar(value="report.txt")
-        self.repo_path = tk.StringVar(value=".")
-        self.max_issues = tk.IntVar(value=5000)
-        self.context_lines = tk.IntVar(value=15)
+
+        # Load saved settings or use defaults
+        saved_settings = self.load_settings()
+        self.report_path = tk.StringVar(value=saved_settings.get("report_path", "report.txt"))
+        self.repo_path = tk.StringVar(value=saved_settings.get("repo_path", "."))
+        self.max_issues = tk.IntVar(value=saved_settings.get("max_issues", 5000))
+        self.context_lines = tk.IntVar(value=saved_settings.get("context_lines", 15))
+        self.sort_option = tk.StringVar(value=saved_settings.get("sort_option", "alphabetical"))
+
         self.status_text = tk.StringVar(value="Ready")
         self.ignored_patterns = self.load_gitignore()
-        self.sort_option = tk.StringVar(value="alphabetical")
         self.filter_text = tk.StringVar()
         self.selected_typo = None
         self.selected_occurrence = None
 
         self.setup_ui()
+        self.root.protocol("WM_DELETE_WINDOW", self.on_window_close)
         self.root.after(100, self.load_report_with_splash)
 
     def update_status(self, message):
         """Update status bar"""
         self.status_text.set(message)
         self.root.update_idletasks()
+
+    def load_settings(self):
+        """Load settings from user profile"""
+        try:
+            if self.config_file.exists():
+                with open(self.config_file, "r") as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"Error loading settings: {e}")
+        return {}
+
+    def save_settings(self):
+        """Save settings to user profile"""
+        try:
+            settings = {
+                "report_path": self.report_path.get(),
+                "repo_path": self.repo_path.get(),
+                "max_issues": self.max_issues.get(),
+                "context_lines": self.context_lines.get(),
+                "sort_option": self.sort_option.get(),
+            }
+            with open(self.config_file, "w") as f:
+                json.dump(settings, f, indent=2)
+        except Exception as e:
+            print(f"Error saving settings: {e}")
+
+    def on_window_close(self):
+        """Handle window close event"""
+        self.save_settings()
+        self.root.destroy()
 
     def load_gitignore(self):
         """Load patterns from .gitignore files"""
@@ -246,7 +283,7 @@ class SpellFixerApp:
         # Filter entry
         filter_frame = ttk.Frame(left_frame)
         filter_frame.pack(fill=tk.X, padx=5, pady=5)
-        ttk.Label(filter_frame, text="Filter:").pack(side=tk.LEFT, padx=2)
+        ttk.Label(filter_frame, text="Typo Filter:").pack(side=tk.LEFT, padx=2)
         filter_entry = ttk.Entry(filter_frame, textvariable=self.filter_text, width=20)
         filter_entry.pack(side=tk.LEFT, padx=2, fill=tk.X, expand=True)
         filter_entry.bind("<KeyRelease>", lambda e: self.on_filter_change())
