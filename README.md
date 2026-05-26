@@ -13,6 +13,10 @@ python -m codespell_lib C:\dev\MySourceCodeRepo >> C:\dev\spellFix\report.txt
 python spell_fixer.py
 ```
 
+* Select the report file
+* Select the repository folder
+* Go through typos and fix them on the bottom right
+
 ## Report Format
 
 UTF-16 encoded file with format:
