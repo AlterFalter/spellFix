@@ -1,0 +1,4 @@
+# prevent test reports
+*.txt
+
+*.pyc
