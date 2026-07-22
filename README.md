@@ -9,7 +9,7 @@ Perfect for solutions with hundreds or thousands of spelling errors across multi
 
 ```bash
 pip install codespell
-python -m codespell_lib C:\dev\MySourceCodeRepo >> C:\dev\spellFix\report.txt
+python -m codespell_lib C:\dev\MySourceCodeRepo >> C:\TEMP\report.txt
 python spellFix.py
 ```
 
