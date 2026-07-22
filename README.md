@@ -10,7 +10,7 @@ Perfect for solutions with hundreds or thousands of spelling errors across multi
 ```bash
 pip install codespell
 python -m codespell_lib C:\dev\MySourceCodeRepo >> C:\dev\spellFix\report.txt
-python spell_fixer.py
+python spellFix.py
 ```
 
 * Select the report file
