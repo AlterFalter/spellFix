@@ -17,6 +17,7 @@ class SpellFixerApp:
 
         self.typos = defaultdict(list)
         self.fixed_items = {}  # Track fixed/skipped items: (typo, file, line) -> status
+        self.project_dictionary = set()  # Typos to ignore per project
 
         # Load saved settings or use defaults
         saved_settings = self.load_settings()
@@ -25,6 +26,9 @@ class SpellFixerApp:
         self.max_issues = tk.IntVar(value=saved_settings.get("max_issues", 5000))
         self.context_lines = tk.IntVar(value=saved_settings.get("context_lines", 15))
         self.sort_option = tk.StringVar(value=saved_settings.get("sort_option", "alphabetical"))
+
+        # Load project dictionary for current repo
+        self.load_project_dictionary()
 
         self.status_text = tk.StringVar(value="Ready")
         self.ignored_patterns = self.load_gitignore()
@@ -70,6 +74,61 @@ class SpellFixerApp:
         """Handle window close event"""
         self.save_settings()
         self.root.destroy()
+
+    def get_project_dict_file(self):
+        """Get path to project dictionary file based on repo path"""
+        repo_path = Path(self.repo_path.get()).resolve()
+        dict_file = repo_path / ".spellfix_dict.json"
+        return dict_file
+
+    def load_project_dictionary(self):
+        """Load project-specific dictionary of ignored typos"""
+        try:
+            dict_file = self.get_project_dict_file()
+            if dict_file.exists():
+                with open(dict_file, "r") as f:
+                    self.project_dictionary = set(json.load(f))
+            else:
+                self.project_dictionary = set()
+        except Exception as e:
+            print(f"Error loading project dictionary: {e}")
+            self.project_dictionary = set()
+
+    def save_project_dictionary(self):
+        """Save project-specific dictionary to file"""
+        try:
+            dict_file = self.get_project_dict_file()
+            dict_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(dict_file, "w") as f:
+                json.dump(sorted(list(self.project_dictionary)), f, indent=2)
+        except Exception as e:
+            print(f"Error saving project dictionary: {e}")
+
+    def add_to_dictionary(self):
+        """Add current typo to project dictionary and skip it"""
+        if not self.selected_typo:
+            messagebox.showwarning("Warning", "Please select a typo first")
+            return
+
+        try:
+            self.project_dictionary.add(self.selected_typo)
+            self.save_project_dictionary()
+            self.update_status(f"Added '{self.selected_typo}' to dictionary")
+
+            # Mark all occurrences as skipped
+            total = len(self.typos[self.selected_typo])
+            for occurrence in self.typos[self.selected_typo]:
+                self.mark_in_report(self.selected_typo, occurrence["file"], occurrence["line"], "skipped")
+
+            # Remove from display
+            if self.selected_typo in self.typos:
+                del self.typos[self.selected_typo]
+
+            self.refresh_typo_list()
+            self.clear_code_view()
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to add to dictionary: {e}")
+            self.update_status("Error adding to dictionary")
 
     def load_gitignore(self):
         """Load patterns from .gitignore files"""
@@ -209,6 +268,11 @@ class SpellFixerApp:
 
                         line_num = int(match.group(2))
                         typo = match.group(3).strip()
+
+                        # Skip typos in project dictionary
+                        if typo in self.project_dictionary:
+                            continue
+
                         corrections = [c.strip() for c in match.group(4).split(",")]
 
                         self.typos[typo].append({
@@ -337,6 +401,7 @@ class SpellFixerApp:
         ttk.Button(control_frame, text="Replace in All Files", command=self.replace_all).pack(side=tk.LEFT, padx=2)
         ttk.Button(control_frame, text="Skip", command=self.skip_occurrence).pack(side=tk.LEFT, padx=2)
         ttk.Button(control_frame, text="Skip All", command=self.skip_all).pack(side=tk.LEFT, padx=2)
+        ttk.Button(control_frame, text="Add to Dictionary", command=self.add_to_dictionary).pack(side=tk.LEFT, padx=2)
 
         # Status bar at bottom
         status_frame = ttk.Frame(self.root)
@@ -691,6 +756,7 @@ class SpellFixerApp:
         folder = filedialog.askdirectory(title="Select Repository Folder")
         if folder:
             self.repo_path.set(folder)
+            self.load_project_dictionary()
             self.ignored_patterns = self.load_gitignore()
             self.typos.clear()
             self.root.after(100, self.load_report_with_splash)
