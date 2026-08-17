@@ -7,6 +7,10 @@ import subprocess
 import os
 import json
 
+# Matches codespell report lines: <path>:<line>: <typo> ==> <corrections>
+# Path may be relative (./ or .\) or absolute (C:\..., C:/..., or /...).
+REPORT_LINE_PATTERN = re.compile(r"(.+?):(\d+):\s+(.+?)\s+=+>\s+(.+)")
+
 
 class SpellFixerApp:
     def __init__(self, root):
@@ -196,7 +200,7 @@ class SpellFixerApp:
                     continue
 
                 # Check if this is the line we're looking for
-                match = re.match(r"\.\\(.+?):(\d+):\s+(.+?)\s+=+>\s+(.+)", line_stripped)
+                match = REPORT_LINE_PATTERN.match(line_stripped)
                 if match:
                     file_in_report = match.group(1).replace("\\", "/")
                     line_in_report = int(match.group(2))
@@ -247,7 +251,7 @@ class SpellFixerApp:
                     if is_fixed or is_skipped:
                         # Extract info from marked line
                         line_to_parse = line[8:] if is_fixed else line[10:]  # Remove marker
-                        match = re.match(r"\.\\(.+?):(\d+):\s+(.+?)\s+=+>\s+(.+)", line_to_parse)
+                        match = REPORT_LINE_PATTERN.match(line_to_parse)
                         if match:
                             filepath = match.group(1).replace("\\", "/")
                             line_num = int(match.group(2))
@@ -260,7 +264,7 @@ class SpellFixerApp:
                                 skipped_count += 1
                         continue
 
-                    match = re.match(r"\.\\(.+?):(\d+):\s+(.+?)\s+=+>\s+(.+)", line)
+                    match = REPORT_LINE_PATTERN.match(line)
                     if match:
                         filepath = match.group(1).replace("\\", "/")
                         if self.is_ignored(filepath):
