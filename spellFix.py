@@ -391,10 +391,8 @@ class SpellFixerApp:
         control_frame = ttk.Frame(right_panel)
         control_frame.pack(fill=tk.X, padx=5, pady=5)
 
-        ttk.Label(control_frame, text="Correction:").pack(side=tk.LEFT, padx=5)
-
-        # Status label for multiple corrections (warning)
-        self.correction_label = ttk.Label(control_frame, text="", foreground="red")
+        self.correction_count_var = tk.StringVar(value="Correction:")
+        self.correction_label = ttk.Label(control_frame, textvariable=self.correction_count_var)
         self.correction_label.pack(side=tk.LEFT, padx=5)
 
         self.correction_var = tk.StringVar()
@@ -552,13 +550,10 @@ class SpellFixerApp:
 
         corrections = self.selected_occurrence["corrections"]
         self.correction_combo["values"] = corrections
+        self.correction_combo.current(0)
 
-        if len(corrections) == 1:
-            self.correction_combo.current(0)
-            self.correction_label.config(text="")
-        else:
-            self.correction_combo.current(0)
-            self.correction_label.config(text=f"{len(corrections)} possibilities", foreground="red")
+        self.correction_count_var.set(f"Correction ({len(corrections)}):")
+        self.correction_label.config(foreground="red" if len(corrections) > 1 else "black")
 
     def clear_code_view(self):
         """Clear the code view"""
@@ -566,7 +561,8 @@ class SpellFixerApp:
         self.code_text.delete(1.0, tk.END)
         self.code_text.config(state=tk.DISABLED)
         self.correction_combo["values"] = []
-        self.correction_label.config(text="")
+        self.correction_count_var.set("Correction:")
+        self.correction_label.config(foreground="black")
 
     def skip_occurrence(self):
         """Mark current occurrence as skipped"""
