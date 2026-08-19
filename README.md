@@ -10,6 +10,9 @@ Perfect for solutions with hundreds or thousands of spelling errors across multi
 ```bash
 pip install codespell
 python -m codespell_lib C:\dev\MySourceCodeRepo >> C:\TEMP\report.txt
+# optional: sort report alphabetically by typo word
+# useful for big reports where not all typos can be loaded at once
+python sort_report.py C:\TEMP\report.txt
 python spellFix.py
 ```
 
