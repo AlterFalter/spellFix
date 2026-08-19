@@ -452,6 +452,21 @@ class SpellFixerApp:
             self.selected_typo = filtered_typos[idx]
         else:
             return
+
+        removed_count = self.prune_stale_occurrences(self.selected_typo)
+        if removed_count:
+            self.refresh_typo_list()
+
+        if self.selected_typo not in self.typos:
+            self.update_status(f"All occurrences of '{self.selected_typo}' were already fixed - removed from list")
+            self.selected_typo = None
+            self.clear_code_view()
+            return
+        elif removed_count:
+            self.update_status(
+                f"{removed_count} occurrence(s) of '{self.selected_typo}' were already fixed and hidden"
+            )
+
         self.refresh_occurrence_list()
 
         # Automatically select first occurrence
@@ -460,6 +475,44 @@ class SpellFixerApp:
             self.on_occurrence_select(None)
         else:
             self.clear_code_view()
+
+    def occurrence_still_valid(self, typo, occurrence):
+        """Check whether the typo is still present at its recorded file/line"""
+        filepath = Path(self.repo_path.get()) / occurrence["file"]
+        line_num = occurrence["line"]
+
+        try:
+            if not filepath.exists():
+                return False
+
+            with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+                lines = f.readlines()
+
+            if line_num < 1 or line_num > len(lines):
+                return False
+
+            return re.search(re.escape(typo), lines[line_num - 1], re.IGNORECASE) is not None
+        except Exception:
+            return False
+
+    def prune_stale_occurrences(self, typo):
+        """Remove occurrences of typo that no longer exist on disk.
+
+        Returns the number of occurrences removed.
+        """
+        if typo not in self.typos:
+            return 0
+
+        remaining = [occ for occ in self.typos[typo] if self.occurrence_still_valid(typo, occ)]
+        removed_count = len(self.typos[typo]) - len(remaining)
+        if removed_count == 0:
+            return 0
+
+        if remaining:
+            self.typos[typo] = remaining
+        else:
+            del self.typos[typo]
+        return removed_count
 
     def refresh_occurrence_list(self):
         """Refresh the occurrence list for selected typo"""
