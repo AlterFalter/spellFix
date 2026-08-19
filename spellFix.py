@@ -550,7 +550,11 @@ class SpellFixerApp:
 
         corrections = self.selected_occurrence["corrections"]
         self.correction_combo["values"] = corrections
-        self.correction_combo.current(0)
+
+        if len(corrections) == 1:
+            self.correction_combo.current(0)
+        else:
+            self.correction_var.set("")
 
         self.correction_count_var.set(f"Correction ({len(corrections)}):")
         self.correction_label.config(foreground="red" if len(corrections) > 1 else "black")
@@ -561,6 +565,7 @@ class SpellFixerApp:
         self.code_text.delete(1.0, tk.END)
         self.code_text.config(state=tk.DISABLED)
         self.correction_combo["values"] = []
+        self.correction_var.set("")
         self.correction_count_var.set("Correction:")
         self.correction_label.config(foreground="black")
 
