@@ -36,3 +36,9 @@ Example:
 .\src\Editor.Net\UtilitiesGUI.xml:122: wether ==> weather, whether
 .\src\Editor.Net\UtilitiesGUI.xml:150: wether ==> weather, whether
 ```
+
+## Running Tests
+
+```bash
+python -m unittest test_spellFix.py
+```
